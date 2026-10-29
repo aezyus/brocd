@@ -1,5 +1,5 @@
 import {handleAuthProxyRequest} from '@neondatabase/auth/server';
-import {requestOrigin} from '../../lib/auth.js';
+import {requestOrigin} from '../lib/auth.js';
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  if(!process.env.NEON_AUTH_BASE_URL||!process.env.NEON_AUTH_COOKIE_SECRET)return res.status(503).json({message:'Account sign-in is not configured yet.'});
@@ -8,8 +8,11 @@ export default async function handler(req,res){
   if(req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)return res.status(403).json({message:'Request not allowed'});
   const origin=requestOrigin(req);
   const url=new URL(req.originalUrl||req.url,origin);
-  const path=url.pathname.replace(/^\/api\/auth\/?/,'');
-  if(!path||path.includes('..'))return res.status(404).json({message:'Not found'});
+  // Vercel rewrites nested auth paths to this explicit function.
+  const path=url.searchParams.get('authPath')||req.query?.authPath||url.pathname.replace(/^\/api\/auth\/?/,'');
+  if(typeof path!=='string'||! /^[a-z0-9-]+(?:\/[a-z0-9-]+)*$/i.test(path))return res.status(404).json({message:'Not found'});
+  url.pathname='/api/auth/'+path;
+  url.searchParams.delete('authPath');
   const headers=new Headers();
   for(const [key,value]of Object.entries(req.headers)){if(value&& !['host','content-length','connection'].includes(key))headers.set(key,Array.isArray(value)?value.join(', '):value);}
   if(req.method==='POST'&&!headers.get('content-type')?.includes('application/json'))return res.status(415).json({message:'JSON required'});

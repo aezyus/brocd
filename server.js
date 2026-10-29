@@ -5,11 +5,12 @@ import dotenv from 'dotenv';
 dotenv.config({path:['.env.local','.env']});
 import express from 'express';
 import handler from './api/data.js';
-import authHandler from './api/auth/[...path].js';
+import authHandler from './api/auth.js';
 const app=express();
 app.disable('x-powered-by');
 app.use(express.json({limit:'8kb'}));
 app.all('/api/data',handler);
+app.all('/api/auth',authHandler);
 app.all('/api/auth/{*path}',authHandler);
 if(process.env.NODE_ENV==='production') {app.use(express.static('dist'));app.get('/{*path}',(req,res)=>res.sendFile('dist/index.html',{root:process.cwd()}));}
 else {const {createServer}=await import('vite');const vite=await createServer({server:{middlewareMode:true},appType:'spa'});app.use(vite.middlewares);}
